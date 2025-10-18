@@ -1,0 +1,47 @@
+name: Mirror from GitLab repo to GitHub repo
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "*/30 * * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Git clone from GitLab
+        env:
+          GITLAB_REPOSITORY: ${{ secrets.GITLAB_REPOSITORY }}
+          GITLAB_SSH_PRIVATE_KEY: ${{ secrets.GITLAB_SSH_PRIVATE_KEY }}
+          GITLAB_SSH_KNOWN_HOSTS: ${{ secrets.GITLAB_SSH_KNOWN_HOSTS }}
+        run: |
+          cd ..
+          echo "$GITLAB_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "$GITLAB_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          mkdir gitlab-repo
+          git clone ${{ secrets.GITLAB_REPOSITORY }} gitlab-repo
+
+      - name: Copy files to GitHub repo
+        run: |
+          mv ../gitlab-repo/FULL_TRANSIT_v4 ./
+          mv ../gitlab-repo/FULL_TRANSIT_v6 ./
+
+      - name: Commit and push changes to GitHub
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add FULL_TRANSIT_v4
+          git add FULL_TRANSIT_v6
+          git commit -m "Mirror from GitLab repository" || echo "No changes to commit"
+          git push origin main
+
+
+
+
